@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="kr.co.librarylyh.mapper.BookListMapper"> <!-- 패키지 인터페이스명 -->
+	<!-- mybatis에선 sql이라는 태그로 미리 템플릿 만들어놓고 필요할때 include해서 바로 사용 가능한 기능이 있다. -->
+	<sql id="paging">
+		<trim prefix="(" suffix=") AND " prefixOverrides="OR">
+			<foreach item="type" collection="typeArr">
+				<trim prefix="OR">
+					<choose>
+						<when test="type == 'T'.toString()"> book like '%'||#{keyword}||'%' </when>
+						<when test="type == 'C'.toString()"> genre like '%'||#{keyword}||'%' </when>
+						<when test="type == 'W'.toString()"> author like '%'||#{keyword}||'%' </when>
+					</choose>
+				</trim>
+			</foreach>
+		</trim>
+	</sql>
+
+	<select id="getList" resultType="kr.co.librarylyh.domain.BookListVO"> <!-- id:메서드명, resultType:객체 -->
+  	<![CDATA[
+  		select * from book_tbl where isbn13 > 0
+  		]]> <!-- CDATA 사용 이유는 부등호인지 문자인지 xml에서 판단하지말고 DB로 그대로 넘기라는 뜻 (문자처리) -->
+	</select>
+	
+	<insert id="insert">
+  	<![CDATA[
+  		insert into book_tbl(photo, book, author, publisher, price, genre, summary, b_count, isbn13, isbn10, publicationDate)
+  		values (#{photo}, #{book}, #{author}, #{publisher}, #{price}, #{genre}, #{summary}, #{b_count}, #{isbn13}, #{isbn10}, #{publicationDate})
+  	]]>
+	</insert>
+
+	<select id="read" resultType="kr.co.librarylyh.domain.BookListVO">
+  	<![CDATA[
+		select * from book_tbl where isbn13 = #{isbn13}
+	]]> <!-- isbn13와 같은 테이블에 모든 정보를 가져와 객체화 시키라는 코드 -->
+	</select>
+
+	<update id="update">
+  <![CDATA[
+  	update book_tbl set book=#{book}, summary=#{summary}, price=#{price}, b_count=#{b_count}, genre=#{genre}
+  	where isbn13 = #{isbn13}
+	]]>
+	</update>
+
+	<delete id="delete">
+  <![CDATA[
+		delete from book_tbl where isbn13 = #{isbn13}
+	]]> <!-- isbn13 일련번호를 조건으로 레코드를 삭제한다. -->
+	</delete>
+
+	<select id="getListWithPaging" parameterType="kr.co.librarylyh.domain.Paging"
+		resultType="kr.co.librarylyh.domain.BookListVO">
+  	<![CDATA[
+		select photo, book, author, publisher, price, genre, summary, b_count, isbn13, isbn10, publicationDate
+		from(select rownum rn, photo, book, author, publisher, price, genre, summary, b_count, isbn13, isbn10, publicationDate
+		from book_tbl where ]]>
+		<trim prefix="(" suffix=") AND " prefixOverrides="OR">
+			<foreach item="type" collection="typeArr">
+				<trim prefix="OR">
+					<choose>
+						<when test="type == 'T'.toString()"> book like '%'||#{keyword}||'%' </when>
+						<when test="type == 'C'.toString()"> genre like '%'||#{keyword}||'%' </when>
+						<when test="type == 'W'.toString()"> author like '%'||#{keyword}||'%' </when>
+					</choose>
+				</trim>
+			</foreach>
+		</trim>
+		<![CDATA[ rownum <= #{ pageNum } * #{ amount })where rn > (#{pageNum}-1) * #{amount} ]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		<![CDATA[
+			select count(*) from book_tbl where
+				]]>
+					<include refid="paging" />
+				<![CDATA[
+				isbn13 > 0
+			]]>
+	</select>
+</mapper>
